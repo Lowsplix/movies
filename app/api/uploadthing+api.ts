@@ -12,7 +12,9 @@ const uploadRouter = {
   }).onUploadComplete(({ file }) => {
     // This code RUNS ON YOUR SERVER after upload
     console.log("file url", file.ufsUrl);
-    return { uploadedBy: file.ufsUrl };
+    return {
+      fileUrl: file.ufsUrl,
+    };
   }),
 } satisfies FileRouter;
 

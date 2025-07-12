@@ -2,6 +2,8 @@ import { Client, Databases, ID, Query } from "react-native-appwrite";
 
 const DATABASE_ID = process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID!;
 const COLLECTION_ID = process.env.EXPO_PUBLIC_APPWRITE_COLLECTION_ID!;
+const SAVED_COLLECTION_ID =
+  process.env.EXPO_PUBLIC_APPWRITE_SAVED_COLLECTION_ID!;
 
 const client = new Client()
   .setEndpoint("https://cloud.appwrite.io/v1")
@@ -54,5 +56,79 @@ export const getTrendingMovies = async (): Promise<
   } catch (error) {
     console.log(error);
     return undefined;
+  }
+};
+
+export const saveMovie = async (movie: MovieDetails, userId: string) => {
+  try {
+    await database.createDocument(
+      DATABASE_ID,
+      SAVED_COLLECTION_ID,
+      ID.unique(),
+      {
+        movie_id: movie.id,
+        user_id: userId,
+        title: movie.title,
+        poster_path: movie.poster_path,
+        release_date: movie.release_date,
+        vote_average: movie.vote_average,
+      }
+    );
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const getSavedMovies = async (
+  userId: string
+): Promise<Movie[] | undefined> => {
+  try {
+    const result = await database.listDocuments(
+      DATABASE_ID,
+      SAVED_COLLECTION_ID,
+      [Query.equal("user_id", userId), Query.orderDesc("$createdAt")]
+    );
+
+    return result.documents as unknown as Movie[];
+  } catch (error) {
+    console.log(error);
+    return undefined;
+  }
+};
+
+export const isMovieSaved = async (
+  movieId: number,
+  userId: string
+): Promise<boolean> => {
+  try {
+    const result = await database.listDocuments(
+      DATABASE_ID,
+      SAVED_COLLECTION_ID,
+      [Query.equal("movie_id", movieId), Query.equal("user_id", userId)]
+    );
+
+    return result.documents.length > 0;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+};
+
+export const removeSavedMovie = async (movieId: number, userId: string) => {
+  try {
+    const result = await database.listDocuments(
+      DATABASE_ID,
+      SAVED_COLLECTION_ID,
+      [Query.equal("movie_id", movieId), Query.equal("user_id", userId)]
+    );
+
+    if (result.documents.length > 0) {
+      const docId = result.documents[0].$id;
+      await database.deleteDocument(DATABASE_ID, SAVED_COLLECTION_ID, docId);
+    }
+  } catch (error) {
+    console.log(error);
+    throw error;
   }
 };
