@@ -54,7 +54,6 @@ const Auth: React.FC = () => {
 
   const signOut = async (): Promise<void> => {
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 3000));
     const { error } = await supabase.auth.signOut();
 
     if (error) Alert.alert(error.message);

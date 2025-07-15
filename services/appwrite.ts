@@ -4,6 +4,10 @@ const DATABASE_ID = process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID!;
 const COLLECTION_ID = process.env.EXPO_PUBLIC_APPWRITE_COLLECTION_ID!;
 const SAVED_COLLECTION_ID =
   process.env.EXPO_PUBLIC_APPWRITE_SAVED_COLLECTION_ID!;
+const IMAGES_COLLECTION_ID =
+  process.env.EXPO_PUBLIC_APPWRITE_IMAGES_COLLECTION_ID!;
+const FAVORITES_COLLECTION_ID =
+  process.env.EXPO_PUBLIC_APPWRITE_FAVORITES_COLLECTION_ID!;
 
 const client = new Client()
   .setEndpoint("https://cloud.appwrite.io/v1")
@@ -126,6 +130,123 @@ export const removeSavedMovie = async (movieId: number, userId: string) => {
     if (result.documents.length > 0) {
       const docId = result.documents[0].$id;
       await database.deleteDocument(DATABASE_ID, SAVED_COLLECTION_ID, docId);
+    }
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const uploadUserImage = async (userImage: userImage) => {
+  try {
+    await database.createDocument(
+      DATABASE_ID,
+      IMAGES_COLLECTION_ID,
+      ID.unique(),
+      {
+        id: userImage.id,
+        profile_url: userImage.profile_url,
+      }
+    );
+    console.log("uploaded: ", userImage.profile_url);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const getUserImage = async (
+  userId: string
+): Promise<string | undefined> => {
+  try {
+    const result = await database.listDocuments(
+      DATABASE_ID,
+      IMAGES_COLLECTION_ID,
+      [Query.equal("id", userId)]
+    );
+    console.log("fetched: ", result.documents[0].profile_url);
+    return result.documents[0].profile_url;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const addToFavorites = async (userId: string, movieId: string) => {
+  try {
+    const result = await database.listDocuments(
+      DATABASE_ID,
+      FAVORITES_COLLECTION_ID,
+      [Query.equal("id", userId)]
+    );
+
+    if (result.documents.length === 0) {
+      await database.createDocument(
+        DATABASE_ID,
+        FAVORITES_COLLECTION_ID,
+        ID.unique(),
+        {
+          id: userId,
+          favorites: [movieId],
+        }
+      );
+    } else {
+      await database.updateDocument(
+        DATABASE_ID,
+        FAVORITES_COLLECTION_ID,
+        result.documents[0].$id,
+        {
+          favorites: [...result.documents[0].favorites, movieId],
+        }
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const isMovieFavorite = async (
+  userId: string,
+  movieId: number
+): Promise<boolean> => {
+  try {
+    const result = await database.listDocuments(
+      DATABASE_ID,
+      FAVORITES_COLLECTION_ID,
+      [Query.equal("id", userId)]
+    );
+
+    if (result.documents.length > 0) {
+      return result.documents[0].favorites.includes(movieId.toString());
+    }
+
+    return false;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const removeFromFavorites = async (userId: string, movieId: string) => {
+  try {
+    const result = await database.listDocuments(
+      DATABASE_ID,
+      FAVORITES_COLLECTION_ID,
+      [Query.equal("id", userId)]
+    );
+
+    if (result.documents.length > 0) {
+      await database.updateDocument(
+        DATABASE_ID,
+        FAVORITES_COLLECTION_ID,
+        result.documents[0].$id,
+        {
+          favorites: result.documents[0].favorites.filter(
+            (id: string) => id !== movieId
+          ),
+        }
+      );
     }
   } catch (error) {
     console.log(error);

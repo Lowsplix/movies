@@ -1,11 +1,13 @@
 import { Session } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
-import { Alert, Image, Pressable, StyleSheet, View } from "react-native";
+import { Alert, Image, Pressable, View } from "react-native";
 import "react-native-url-polyfill/auto";
 
 import Auth from "@/components/Auth";
 import { icons } from "@/constants/icons";
+import { images } from "@/constants/images";
 import { supabase } from "@/lib/supabase";
+import { getUserImage, uploadUserImage } from "@/services/appwrite";
 import { useImageUploader } from "@/utils/uploadthing";
 
 const profile = () => {
@@ -18,12 +20,9 @@ const profile = () => {
       const userId = session?.user?.id;
 
       if (userId) {
-        // Store the image URL with user ID association
         setProfileImage(imageUrl);
+        uploadUserImage({ id: userId, profile_url: imageUrl });
         console.log(`Profile image uploaded for user ${userId}:`, imageUrl);
-
-        // You can save this to your database here
-        // Example: saveProfileImage(userId, imageUrl);
 
         Alert.alert("Upload Completed", "Profile photo updated successfully!");
       }
@@ -34,26 +33,21 @@ const profile = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      // Load existing profile image for the user
-      if (session?.user?.id) {
-        loadUserProfileImage(session.user.id);
-      }
     });
 
     supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      // Load existing profile image for the user
-      if (session?.user?.id) {
-        loadUserProfileImage(session.user.id);
-      }
     });
   }, []);
 
+  useEffect(() => {
+    if (session?.user?.id) loadUserProfileImage(session.user.id);
+  }, [session]);
+
   const loadUserProfileImage = async (userId: string) => {
     try {
-      // You can implement loading from your database here
-      // Example: const savedImage = await getUserProfileImage(userId);
-      // setProfileImage(savedImage);
+      const imageUrl = await getUserImage(userId);
+      setProfileImage(imageUrl || null);
       console.log(`Loading profile image for user: ${userId}`);
     } catch (error) {
       console.error("Error loading profile image:", error);
@@ -61,11 +55,6 @@ const profile = () => {
   };
 
   const handleImageUpload = () => {
-    if (!session?.user?.id) {
-      Alert.alert("Error", "Please log in to upload a profile photo");
-      return;
-    }
-
     openImagePicker({
       source: "library",
       onInsufficientPermissions: () => {
@@ -86,27 +75,84 @@ const profile = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <Image
+        source={images.bg}
+        style={{
+          flex: 1,
+          position: "absolute",
+          width: "100%",
+          zIndex: 0,
+        }}
+        resizeMode="cover"
+      />
+
       {!session && <Auth />}
       {session && session.user && (
-        <View style={styles.profileContainer}>
-          <View style={styles.uploadContainer}>
+        <View style={{ flex: 1, alignItems: "center", paddingHorizontal: 24 }}>
+          <View
+            style={{
+              width: "100%",
+              flexDirection: "row",
+              justifyContent: "center",
+              marginTop: 80,
+              alignItems: "center",
+              marginBottom: 40,
+            }}
+          >
+            <Image
+              source={icons.logo}
+              style={{
+                width: 48,
+                height: 40,
+              }}
+            />
+          </View>
+
+          <View style={{ alignItems: "center" }}>
             <Pressable
               android_ripple={{ color: "#e5e7eb", borderless: true }}
               onPress={handleImageUpload}
-              style={styles.profileImageContainer}
+              style={{
+                width: 128,
+                height: 128,
+                borderRadius: 64,
+                backgroundColor: "#f3f4f6",
+                borderWidth: 4,
+                borderColor: "#d1d5db",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: {
+                  width: 0,
+                  height: 4,
+                },
+                shadowOpacity: 0.3,
+                shadowRadius: 4.65,
+                elevation: 8,
+              }}
             >
               {profileImage ? (
                 <Image
                   source={{ uri: profileImage }}
-                  style={styles.profileImage}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: 64,
+                  }}
                   resizeMode="cover"
                 />
               ) : (
-                <View style={styles.placeholderContainer}>
+                <View
+                  style={{ alignItems: "center", justifyContent: "center" }}
+                >
                   <Image
                     source={icons.person}
-                    style={styles.placeholderIcon}
+                    style={{
+                      width: 48,
+                      height: 48,
+                      tintColor: "#9ca3af",
+                    }}
                     resizeMode="contain"
                   />
                 </View>
@@ -118,53 +164,5 @@ const profile = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000",
-  },
-  profileContainer: {
-    flex: 1,
-    alignItems: "center",
-    paddingHorizontal: 24,
-  },
-  uploadContainer: {
-    alignItems: "center",
-    marginTop: 80, // Position under camera bump
-  },
-  profileImageContainer: {
-    width: 128,
-    height: 128,
-    borderRadius: 64,
-    backgroundColor: "#f3f4f6",
-    borderWidth: 4,
-    borderColor: "#d1d5db",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
-  profileImage: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 64,
-  },
-  placeholderContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  placeholderIcon: {
-    width: 48,
-    height: 48,
-    tintColor: "#9ca3af",
-  },
-});
 
 export default profile;
